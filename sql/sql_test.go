@@ -1,24 +1,24 @@
-package mgo
+package sql
 
 import (
 	"fmt"
+	"github.com/Centny/gwf/dbutil"
 	"github.com/Centny/gwf/tutil"
 	"github.com/Centny/gwf/util"
-	"gopkg.in/mgo.v2/bson"
+	_ "github.com/go-sql-driver/mysql"
 	"runtime"
 	"sync"
 	"testing"
-	"time"
 )
 
 func TestDefault(t *testing.T) {
 	runtime.GOMAXPROCS(util.CPU())
-	err := AddDefault("cny:123@loc.w:27017/cny", "cny")
+	err := AddDefault2("mysql", "cny:123@tcp(127.0.0.1:3306)/test?charset=utf8&loc=Local")
 	if err != nil {
 		t.Error(err.Error())
 		return
 	}
-	err = AddDefault("cny:123@loc.w:27017/cny", "cny")
+	err = AddDefault2("mysql", "cny:123@tcp(127.0.0.1:3306)/test?charset=utf8&loc=Local")
 	if err != nil {
 		t.Error(err.Error())
 		return
@@ -30,31 +30,28 @@ func TestDefault(t *testing.T) {
 	// time.Sleep(5 * time.Second)
 	wg := &sync.WaitGroup{}
 	rundb := func() {
-		err := C("abc").Insert(bson.M{"a": 1, "b": 2})
+		iv, err := dbutil.DbQueryInt(Db(), "select 1")
 		if err != nil {
 			t.Error(err.Error())
 		}
 		wg.Done()
+		fmt.Println(iv)
 	}
 	wg.Add(3)
 	for i := 0; i < 3; i++ {
 		go rundb()
 	}
 	wg.Wait()
-	// Default.SelMDb().Close()
-	// Default.SelMDb().Close()
-	// C("abc").Insert(bson.M{"a": 1, "b": 2})
-	time.Sleep(2 * time.Second)
 }
 
 func TestDbL(t *testing.T) {
 	runtime.GOMAXPROCS(util.CPU())
-	err := AddDbL("a1", "cny:123@loc.w:27017/cny", "cny")
+	err := AddDbL2("a1", "mysql", "cny:123@tcp(127.0.0.1:3306)/test?charset=utf8&loc=Local")
 	if err != nil {
 		t.Error(err.Error())
 		return
 	}
-	err = AddDbL("a2", "cny:123@loc.w:27017/cny", "cny")
+	err = AddDbL2("a2", "mysql", "cny:123@tcp(127.0.0.1:3306)/test?charset=utf8&loc=Local")
 	if err != nil {
 		t.Error(err.Error())
 		return
@@ -70,11 +67,11 @@ func TestDbL(t *testing.T) {
 	// time.Sleep(5 * time.Second)
 	wg := &sync.WaitGroup{}
 	rundb := func() {
-		err = CBy("a1", "abc").Insert(bson.M{"a": 1, "b": 2})
+		_, err = dbutil.DbQueryF(DbBy("a1"), "select 1")
 		if err != nil {
 			t.Error(err.Error())
 		}
-		err = CBy("a2", "abc").Insert(bson.M{"a": 1, "b": 2})
+		_, err = dbutil.DbQueryF(DbBy("a2"), "select 1")
 		if err != nil {
 			t.Error(err.Error())
 		}
@@ -85,21 +82,18 @@ func TestDbL(t *testing.T) {
 		go rundb()
 	}
 	wg.Wait()
-	time.Sleep(2 * time.Second)
 	fmt.Println("all done")
 }
 
 func TestPerformance(t *testing.T) {
 	runtime.GOMAXPROCS(util.CPU())
-	err := AddDefault("cny:123@loc.w:27017/cny", "cny")
+	err := AddDefault2("mysql", "cny:123@tcp(127.0.0.1:3306)/test?charset=utf8&loc=Local")
 	if err != nil {
 		t.Error(err.Error())
 		return
 	}
-	fmt.Println("xxxx->")
-
 	used, err := tutil.DoPerf(5000, "", func(i int) {
-		err := C("abc").Insert(bson.M{"a": 1, "b": 2})
+		_, err = dbutil.DbQueryF(Db(), "select 1")
 		if err != nil {
 			t.Error(err.Error())
 		}
@@ -117,5 +111,5 @@ func TestErr(t *testing.T) {
 		DbBy("kkksks")
 	}()
 	<-wait
-	NewMGO_H("xxx", "name").Create()
+	NewSQL_H("xxx", "name", 1, 3).Create()
 }

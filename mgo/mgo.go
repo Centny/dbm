@@ -2,40 +2,35 @@ package mgo
 
 import (
 	"fmt"
+	"github.com/Centny/dbm"
 	"github.com/Centny/gwf/log"
 	tmgo "gopkg.in/mgo.v2"
-	"sync/atomic"
-	"time"
 )
 
-var Default = &MDbs{}
-var DbL = map[string]*MDbs{}
+var Default = &dbm.MDbs{}
+var DbL = map[string]*dbm.MDbs{}
 
 func Db() *tmgo.Database {
-	return Default.Db()
+	return Default.Db().(*tmgo.Database)
 }
 func C(name string) *tmgo.Collection {
-	return Default.C(name)
+	return Db().C(name)
 }
 
 func DbBy(key string) *tmgo.Database {
 	if mdb, ok := DbL[key]; ok {
-		return mdb.Db()
+		return mdb.Db().(*tmgo.Database)
 	} else {
 		panic("database is not found by name " + key)
 	}
 }
 
 func CBy(key string, name string) *tmgo.Collection {
-	if mdb, ok := DbL[key]; ok {
-		return mdb.C(name)
-	} else {
-		panic("database is not found by name " + key)
-	}
+	return DbBy(key).C(name)
 }
 
 func AddDefault(url, name string) error {
-	mdb, err := NewMDb(url, name)
+	mdb, err := dbm.NewMDb(NewMGO_H(url, name))
 	if err == nil {
 		Default.Add(mdb)
 	}
@@ -43,112 +38,44 @@ func AddDefault(url, name string) error {
 }
 
 func AddDbL(key, url, name string) error {
-	mdbs, err := NewMDbs(url, name)
+	mdbs, err := dbm.NewMDbs(NewMGO_H(url, name))
 	if err == nil {
 		DbL[key] = mdbs
 	}
 	return err
 }
 
-type MDb struct {
-	*tmgo.Session
-	Url     string
-	Name    string
-	Active  bool
-	Running bool
-	Delay   time.Duration
+type MGO_H struct {
+	Name string
+	Url  string
 }
 
-func NewMDb(url, name string) (*MDb, error) {
-	return NewMDb2(url, name, true)
-}
-
-func NewMDb2(url, name string, ping bool) (*MDb, error) {
-	log.I("dail to mgo by url(%v),name(%v),ping(%v)", url, name, ping)
-	ss, err := tmgo.Dial(url)
-	mdb := &MDb{
-		Session: ss,
-		Url:     url,
-		Name:    name,
-		Active:  true,
-		Running: true,
-		Delay:   2000,
-	}
-	if err == nil && ping {
-		go mdb.RunPing()
-	}
-	return mdb, err
-}
-
-func (m *MDb) Db() *tmgo.Database {
-	return m.DB(m.Name)
-}
-
-func (m *MDb) C(name string) *tmgo.Collection {
-	return m.Db().C(name)
-}
-
-func (m *MDb) RunPing() {
-	for m.Running {
-		log.I("MDb start ping to %v ", m.String())
-		m.Active = false
-		err := m.Ping()
-		m.Active = err == nil
-		if err == nil {
-			log.I("MDb ping to %v success, will retry after %vms", m.String(), int64(m.Delay))
-		} else {
-			log.E("MDb ping to %v error->%v, will retry after %vms", m.String(), err, int64(m.Delay))
-		}
-		time.Sleep(m.Delay * time.Millisecond)
+func NewMGO_H(url, name string) *MGO_H {
+	return &MGO_H{
+		Name: name,
+		Url:  url,
 	}
 }
-func (m *MDb) String() string {
-	return fmt.Sprintf("Url(%v),Name(%v)", m.Url, m.Name)
+func (m *MGO_H) Ping(db interface{}) error {
+	mdb := db.(*tmgo.Database)
+	err := mdb.Session.Ping()
+	if err != nil && err.Error() == "Closed explicitly" {
+		return dbm.Closed
+	} else {
+		return err
+	}
 }
-
-type MDbs struct {
-	Dbs  []*MDb
-	onum uint32
-}
-
-func NewMDbs(url, name string) (*MDbs, error) {
-	mdbs := &MDbs{}
-	mdb, err := NewMDb(url, name)
+func (m *MGO_H) Create() (interface{}, error) {
+	log.D("MGO_H start dail to %v", m)
+	ss, err := tmgo.Dial(m.Url)
 	if err == nil {
-		mdbs.Add(mdb)
+		log.D("MGO_H dail to %v success", m)
+		return ss.DB(m.Name), nil
+	} else {
+		log.D("MGO_H dail to %v error->%v", m, err)
+		return nil, err
 	}
-	return mdbs, err
 }
-
-func (m *MDbs) Add(mdb ...*MDb) {
-	m.Dbs = append(m.Dbs, mdb...)
-}
-
-func (m *MDbs) Db() *tmgo.Database {
-	return m.SelMDb().Db()
-}
-
-func (m *MDbs) C(name string) *tmgo.Collection {
-	return m.SelMDb().C(name)
-}
-
-func (m *MDbs) SelMDb() *MDb {
-	all := len(m.Dbs)
-	if all < 1 {
-		panic("database session list is empty, please add at last one")
-	}
-	tidx := atomic.AddUint32(&m.onum, 1)
-	bidx := int(tidx % uint32(all))
-	for {
-		for i := 0; i < all; i++ {
-			mdb := m.Dbs[(bidx+i)%all]
-			if mdb.Active {
-				return mdb
-			}
-		}
-		log.W("MDbs all session is not active, it will retry after 1s")
-		time.Sleep(time.Second)
-	}
-	panic("never calling to this")
-
+func (m *MGO_H) String() string {
+	return fmt.Sprintf("MGO(Name:%v,Url:%v)", m.Name, m.Url)
 }

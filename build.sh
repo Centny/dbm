@@ -12,6 +12,8 @@ echo "Installing Dependence"
 #########Running Test#########
 echo "Running Test"
 pkgs="\
+ github.com/Centny/dbm\
+ github.com/Centny/dbm/sql\
  github.com/Centny/dbm/mgo\
 "
 echo "mode: set" > a.out

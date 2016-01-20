@@ -6,38 +6,36 @@ import (
 	"github.com/Centny/gwf/util"
 	"gopkg.in/mgo.v2/bson"
 	"runtime"
-	"sync"
 	"time"
 )
 
 func tmgo() {
 	runtime.GOMAXPROCS(util.CPU())
-	err := mgo.AddDefault("cny:123@loc.w:27017/cny", "cny")
+	err := mgo.AddDefault("cny:123@10.211.55.3:27017/cny", "cny")
 	if err != nil {
 		fmt.Println(err.Error())
 		return
 	}
+	// time.Sleep(500 * time.Second)
 	err = mgo.AddDefault("cny:123@loc.w:27017/cny", "cny")
 	if err != nil {
 		fmt.Println(err.Error())
 		return
 	}
 	fmt.Println("add done...")
-	time.Sleep(5 * time.Second)
-	wg := &sync.WaitGroup{}
-	rundb := func() {
-		fmt.Println("running...")
+	rundb := func(v int) {
+		fmt.Println("running->", v)
 		err := mgo.C("abc").Insert(bson.M{"a": 1, "b": 2})
 		if err != nil {
-			fmt.Println(err.Error())
+			panic(err.Error())
 		}
-		wg.Done()
-		fmt.Println("done...")
+		fmt.Println("done->", v)
 	}
-	wg.Add(200)
-	for i := 0; i < 200; i++ {
-		go rundb()
+	for {
+		for i := 0; i < 5; i++ {
+			go rundb(i)
+		}
+		time.Sleep(3 * time.Second)
 	}
-	wg.Wait()
 	fmt.Println("all done...")
 }
