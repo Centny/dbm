@@ -10,6 +10,14 @@ import (
 	"time"
 )
 
+var ShowLog bool = false
+
+func slog(format string, args ...interface{}) {
+	if ShowLog {
+		log.D_(-1, format, args...)
+	}
+}
+
 type DbH interface {
 	Ping(db interface{}) error
 	Create() (interface{}, error)
@@ -65,12 +73,12 @@ func (m *MDb) recon() {
 	}
 }
 func (m *MDb) rping_() {
-	log.I("MDb start ping to %v ", m.String())
+	slog("MDb start ping to %v ", m.String())
 	err := m.H.Ping(m.DB)
 	m.lck.L.Lock()
 	m.Active = err == nil
 	if err == nil {
-		log.D("MDb ping to %v success", m.String())
+		slog("MDb ping to %v success", m.String())
 		m.ping = 0
 	} else if err.Error() == "Closed explicitly" {
 		log.E("MDb ping to %v error->%v, will try reconnect", m.String(), err)

@@ -2,6 +2,7 @@ package sql
 
 import (
 	"fmt"
+	"github.com/Centny/dbm"
 	"github.com/Centny/gwf/dbutil"
 	"github.com/Centny/gwf/tutil"
 	"github.com/Centny/gwf/util"
@@ -87,7 +88,8 @@ func TestDbL(t *testing.T) {
 
 func TestPerformance(t *testing.T) {
 	runtime.GOMAXPROCS(util.CPU())
-	err := AddDefault2("mysql", "cny:123@tcp(127.0.0.1:3306)/test?charset=utf8&loc=Local")
+	dbm.ShowLog = true
+	err := AddDefault2("mysql", "cny:123@tcp(192.168.2.57:3306)/test?charset=utf8&loc=Local")
 	if err != nil {
 		t.Error(err.Error())
 		return
