@@ -32,7 +32,7 @@ func AddDefault(driver, url string, idle, max int) error {
 	return err
 }
 func AddDefault2(driver, url string) error {
-	return AddDefault(driver, url, util.CPU(), util.CPU()*3)
+	return AddDefault(driver, url, util.CPU(), util.CPU()*2)
 }
 
 func AddDbL(key, driver, url string, idle, max int) error {
@@ -43,7 +43,7 @@ func AddDbL(key, driver, url string, idle, max int) error {
 	return err
 }
 func AddDbL2(key, driver, url string) error {
-	return AddDbL(key, driver, url, util.CPU(), util.CPU()*3)
+	return AddDbL(key, driver, url, util.CPU(), util.CPU()*2)
 }
 
 type SQL_H struct {
