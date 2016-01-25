@@ -79,3 +79,20 @@ func (m *MGO_H) Create() (interface{}, error) {
 func (m *MGO_H) String() string {
 	return fmt.Sprintf("MGO(Name:%v,Url:%v)", m.Name, m.Url)
 }
+
+type MDbs struct {
+	*dbm.MDbs
+}
+
+func NewMDbs(url, name string) (*MDbs, error) {
+	mdbs, err := dbm.NewMDbs(NewMGO_H(url, name))
+	return &MDbs{MDbs: mdbs}, err
+}
+
+func (m *MDbs) Db() *tmgo.Database {
+	return m.MDbs.Db().(*tmgo.Database)
+}
+
+func (m *MDbs) C(name string) *tmgo.Collection {
+	return m.Db().C(name)
+}
