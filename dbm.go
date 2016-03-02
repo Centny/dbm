@@ -125,6 +125,12 @@ type MDbs struct {
 	Timeout int64
 }
 
+func NewMDbs2() *MDbs {
+	return &MDbs{
+		Timeout: 30000,
+	}
+}
+
 func NewMDbs(h DbH) (*MDbs, error) {
 	mdbs := &MDbs{
 		Timeout: 30000,

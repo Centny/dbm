@@ -7,7 +7,7 @@ import (
 	tmgo "gopkg.in/mgo.v2"
 )
 
-var Default = &dbm.MDbs{}
+var Default = dbm.NewMDbs2()
 var DbL = map[string]*dbm.MDbs{}
 
 func Db() *tmgo.Database {

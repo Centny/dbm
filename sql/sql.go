@@ -9,7 +9,7 @@ import (
 	"github.com/Centny/gwf/util"
 )
 
-var Default = &dbm.MDbs{}
+var Default = dbm.NewMDbs2()
 var DbL = map[string]*dbm.MDbs{}
 
 func Db() *sql.DB {
