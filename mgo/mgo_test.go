@@ -97,14 +97,40 @@ func TestPerformance(t *testing.T) {
 		return
 	}
 	fmt.Println("xxxx->")
-
-	used, err := tutil.DoPerf(5000, "", func(i int) {
+	var added = map[int64]bool{}
+	var lck = sync.RWMutex{}
+	C(Sequence).RemoveAll(nil)
+	fmt.Println(Next2("abc", 1))
+	fmt.Println(Next2("abc", 1))
+	used, err := tutil.DoPerf(2000, "", func(i int) {
 		err := C("abc").Insert(bson.M{"a": 1, "b": 2})
 		if err != nil {
 			t.Error(err.Error())
+			return
 		}
+		_, nv, err := Next2("abc", 1)
+		if err != nil {
+			t.Error(err.Error())
+			return
+		}
+		_, nv2, err := Next(Sequence, "abc", 1)
+		if err != nil {
+			t.Error(err.Error())
+			return
+		}
+		lck.Lock()
+		if added[nv] {
+			panic("exit")
+		}
+		if added[nv2] {
+			panic("exit")
+		}
+		added[nv] = true
+		added[nv2] = true
+		lck.Unlock()
 	})
 	fmt.Println(used, err)
+	fmt.Println(Next2("abc", 0))
 }
 
 func TestErr(t *testing.T) {

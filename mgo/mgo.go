@@ -4,17 +4,26 @@ import (
 	"fmt"
 	"github.com/Centny/dbm"
 	"github.com/Centny/gwf/log"
+	"github.com/Centny/gwf/util"
 	tmgo "gopkg.in/mgo.v2"
+	"gopkg.in/mgo.v2/bson"
 )
 
 var Default = dbm.NewMDbs2()
 var DbL = map[string]*dbm.MDbs{}
+var Sequence = "sequence"
 
 func Db() *tmgo.Database {
 	return Default.Db().(*tmgo.Database)
 }
 func C(name string) *tmgo.Collection {
 	return Db().C(name)
+}
+func Next(name, id string, increase int64) (oldv, newv int64, err error) {
+	return NextV(C(name), id, increase)
+}
+func Next2(id string, increase int64) (oldv, newv int64, err error) {
+	return NextV(C(Sequence), id, increase)
 }
 
 func DbBy(key string) *tmgo.Database {
@@ -27,6 +36,14 @@ func DbBy(key string) *tmgo.Database {
 
 func CBy(key string, name string) *tmgo.Collection {
 	return DbBy(key).C(name)
+}
+
+func NextBy(key, name, id string, increase int64) (oldv, newv int64, err error) {
+	return NextV(CBy(key, name), id, increase)
+}
+
+func NextBy2(key, id string, increase int64) (oldv, newv int64, err error) {
+	return NextV(CBy(key, Sequence), id, increase)
 }
 
 func AddDefault(url, name string) error {
@@ -95,4 +112,24 @@ func (m *MDbs) Db() *tmgo.Database {
 
 func (m *MDbs) C(name string) *tmgo.Collection {
 	return m.Db().C(name)
+}
+
+func NextV(c *tmgo.Collection, id string, increase int64) (oldv int64, newv int64, err error) {
+	var res = bson.M{}
+	info, err := c.Find(bson.M{"_id": id}).Select(bson.M{"sequence": 1}).Apply(tmgo.Change{
+		Update:    bson.M{"$inc": bson.M{"sequence": increase}},
+		ReturnNew: true,
+		Upsert:    true,
+	}, &res)
+	if err != nil {
+		err = util.Err("require sequence(increase:%v) for %v fail, err:%v ", increase, id, err)
+		return
+	}
+	if info.Updated != 1 && info.UpsertedId == nil {
+		err = util.Err("require sequence(increase:%v) for %v fail, %v updated ", increase, id, info.Updated)
+		return
+	}
+	newv = res["sequence"].(int64)
+	oldv = newv - increase
+	return
 }
