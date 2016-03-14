@@ -11,13 +11,13 @@ import (
 
 func tmgo() {
 	runtime.GOMAXPROCS(util.CPU())
-	err := mgo.AddDefault("cny:123@10.211.55.3:27017/cny", "cny")
-	if err != nil {
-		fmt.Println(err.Error())
-		return
-	}
+	// err := mgo.AddDefault("cny:123@10.211.55.3:27017/cny", "cny")
+	// if err != nil {
+	// 	fmt.Println(err.Error())
+	// 	return
+	// }
 	// time.Sleep(500 * time.Second)
-	err = mgo.AddDefault("cny:123@loc.w:27017/cny", "cny")
+	err := mgo.AddDefault("cny:123@192.168.2.57:27017/cny", "cny")
 	if err != nil {
 		fmt.Println(err.Error())
 		return
@@ -35,7 +35,7 @@ func tmgo() {
 		for i := 0; i < 5; i++ {
 			go rundb(i)
 		}
-		time.Sleep(3 * time.Second)
+		time.Sleep(100 * time.Millisecond)
 	}
 	fmt.Println("all done...")
 }

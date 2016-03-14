@@ -14,13 +14,13 @@ import (
 
 func tsql() {
 	runtime.GOMAXPROCS(util.CPU())
-	err := sql.AddDefault("mysql", "cny:123@tcp(127.0.0.1:3306)/test?charset=utf8&loc=Local")
+	err := sql.AddDefault("mysql", "cny:123@tcp(127.0.0.1:3306)/test?charset=utf8&loc=Local", 5, 8)
 	if err != nil {
 		fmt.Println(err.Error())
 		return
 	}
 	// time.Sleep(500 * time.Second)
-	err = sql.AddDefault("mysql", "cny:123@tcp(127.0.0.1:3306)/test?charset=utf8&loc=Local")
+	err = sql.AddDefault("mysql", "cny:123@tcp(127.0.0.1:3306)/test?charset=utf8&loc=Local", 5, 8)
 	if err != nil {
 		fmt.Println(err.Error())
 		return

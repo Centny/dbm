@@ -101,7 +101,7 @@ func TestPerformance(t *testing.T) {
 	var lck = sync.RWMutex{}
 	C(Sequence).RemoveAll(nil)
 	fmt.Println(Next2("abc", 1))
-	fmt.Println(Next2("abc", 1))
+	fmt.Println(Next2("abc", 10))
 	used, err := tutil.DoPerf(2000, "", func(i int) {
 		err := C("abc").Insert(bson.M{"a": 1, "b": 2})
 		if err != nil {
