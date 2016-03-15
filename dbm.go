@@ -45,7 +45,7 @@ func NewMDb(h DbH) (*MDb, error) {
 		DB:      db,
 		Active:  true,
 		Running: true,
-		Timeout: 1000,
+		Timeout: 3000,
 		Hited:   0,
 		ping:    0,
 		lck:     sync.NewCond(&sync.Mutex{}),
