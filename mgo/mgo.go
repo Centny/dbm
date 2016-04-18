@@ -84,7 +84,7 @@ func (m *MGO_H) Ping(db interface{}) error {
 }
 func (m *MGO_H) Create() (interface{}, error) {
 	if len(m.Url) < 1 || len(m.Name) < 1 {
-		return util.Err("the database con/name is empty")
+		return nil, util.Err("the database con/name is empty")
 	}
 	log.D("MGO_H start dail to %v", m)
 	ss, err := tmgo.Dial(m.Url)
