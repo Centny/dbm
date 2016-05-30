@@ -75,7 +75,7 @@ func NewMGO_H(url, name string) *MGO_H {
 }
 func (m *MGO_H) Ping(db interface{}) error {
 	mdb := db.(*tmgo.Database)
-	_, err := mdb.CollectionNames()
+	_, err := mdb.C("MGO_H").Count()
 	if err != nil && (err.Error() == "Closed explicitly" || err.Error() == "EOF") {
 		return dbm.Closed
 	} else {
