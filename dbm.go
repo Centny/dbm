@@ -32,10 +32,12 @@ type MDb struct {
 	Active  bool
 	Running bool
 	Timeout int64 //ms
+	Delay   int64
 	Hited   uint64
 
 	lck  *sync.Cond
 	ping int32
+	last int64
 }
 
 func NewMDb(h DbH) (*MDb, error) {
@@ -45,7 +47,8 @@ func NewMDb(h DbH) (*MDb, error) {
 		DB:      db,
 		Active:  true,
 		Running: true,
-		Timeout: 3000,
+		Timeout: 8000,
+		Delay:   3000,
 		Hited:   0,
 		ping:    0,
 		lck:     sync.NewCond(&sync.Mutex{}),
@@ -80,6 +83,7 @@ func (m *MDb) rping_() {
 	if err == nil {
 		slog("MDb ping to %v success", m.String())
 		m.ping = 0
+		m.last = util.Now()
 	} else if err.Error() == "Closed explicitly" {
 		log.E("MDb ping to %v error->%v, will try reconnect", m.String(), err)
 		m.ping = 1
@@ -105,6 +109,10 @@ func (m *MDb) tping_() {
 func (m *MDb) TPing() bool {
 	m.lck.L.Lock()
 	defer m.lck.L.Unlock()
+	now := util.Now()
+	if m.Active && now-m.last < m.Delay {
+		return true
+	}
 	if m.ping < 1 {
 		m.ping = 1
 		go m.tping_()
