@@ -24,6 +24,17 @@ var Indexes = map[string]map[string]mgo.Index{
 	},
 }
 
+var Indexes2 = map[string]map[string]mgo.Index{
+	"abc": map[string]mgo.Index{
+		"abc_a": mgo.Index{
+			Key: []string{"a"},
+		},
+		"abc_c": mgo.Index{
+			Key: []string{"c"},
+		},
+	},
+}
+
 func TestDefault(t *testing.T) {
 	dbm.ShowLog = true
 	time.Sleep(time.Second)
@@ -42,7 +53,14 @@ func TestDefault(t *testing.T) {
 		t.Error("error")
 		return
 	}
+	Db().C("abc").DropCollection()
+	//
 	err = ChkIdx(C, Indexes)
+	if err != nil {
+		t.Error(err.Error())
+		return
+	}
+	err = ChkIdx(C, Indexes2)
 	if err != nil {
 		t.Error(err.Error())
 		return
