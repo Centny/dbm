@@ -27,15 +27,12 @@ type DbH interface {
 var Closed = errors.New("Closed explicitly")
 
 type MDb struct {
-	H       DbH
-	DB      interface{}
-	Active  bool
-	Running bool
-	Timeout int64 //ms
-	Delay   int64
-	Hited   uint64
+	H      DbH
+	DB     interface{}
+	Active bool
+	Hited  uint64
 
-	lck  *sync.Cond
+	lck  *sync.RWMutex
 	ping int32
 	last int64
 }
@@ -43,15 +40,12 @@ type MDb struct {
 func NewMDb(h DbH) (*MDb, error) {
 	db, err := h.Create()
 	mdb := &MDb{
-		H:       h,
-		DB:      db,
-		Active:  true,
-		Running: true,
-		Timeout: 8000,
-		Delay:   3000,
-		Hited:   0,
-		ping:    0,
-		lck:     sync.NewCond(&sync.Mutex{}),
+		H:      h,
+		DB:     db,
+		Active: true,
+		Hited:  0,
+		ping:   0,
+		lck:    &sync.RWMutex{},
 	}
 	return mdb, err
 }
@@ -60,66 +54,42 @@ func (m *MDb) Db() interface{} {
 	return m.DB
 }
 
-func (m *MDb) recon() {
-	db, err := m.H.Create()
-	if err == nil {
-		m.DB = db
-		log.D("MDb connect to %v success, will mark to active", m.String())
-		m.lck.L.Lock()
-		m.ping = 0
-		m.lck.Broadcast()
-		m.lck.L.Unlock()
-	} else {
-		log.E("MDb connect to %v error->%v, will retry after 5s", m.String(), err)
-		time.Sleep(5 * time.Second)
-		go m.recon()
-	}
-}
-func (m *MDb) rping_() {
+func (m *MDb) TPing() {
 	slog("MDb start ping to %v ", m.String())
 	err := m.H.Ping(m.DB)
-	m.lck.L.Lock()
-	m.Active = err == nil
-	if err == nil {
-		slog("MDb ping to %v success", m.String())
+	if err == nil || err.Error() != "Closed explicitly" {
+		if err == nil {
+			slog("MDb ping to %v success", m.String())
+		} else {
+			log.E("MDb ping to %v error->%v, will mark to not active", m.String(), err)
+		}
+		m.lck.Lock()
+		m.Active = err == nil
 		m.ping = 0
-		m.last = util.Now()
-	} else if err.Error() == "Closed explicitly" {
-		log.E("MDb ping to %v error->%v, will try reconnect", m.String(), err)
-		m.ping = 1
-		go m.recon()
-	} else {
-		log.E("MDb ping to %v error->%v, will mark to not active", m.String(), err)
-		m.ping = 0
+		m.lck.Unlock()
+		return
 	}
-	m.lck.Broadcast()
-	m.lck.L.Unlock()
+	//do reconnect
+	log.E("MDb ping to %v error->%v, will try reconnect", m.String(), err)
+	for {
+		db, err := m.H.Create()
+		if err == nil {
+			log.D("MDb connect to %v success, will mark to active", m.String())
+			m.lck.Lock()
+			m.DB = db
+			m.ping = 0
+			m.Active = true
+			m.lck.Unlock()
+		} else {
+			log.E("MDb connect to %v error->%v, will retry after 5s", m.String(), err)
+			time.Sleep(5 * time.Second)
+		}
+	}
 }
-func (m *MDb) tping_() {
-	go m.rping_()
-	time.Sleep(time.Duration(m.Timeout) * time.Millisecond)
-	m.lck.L.Lock()
-	if m.ping > 0 {
-		m.Active = false
-		log.W("MDb ping to %v timeout(%vms), will mark to not active", m.String(), m.Timeout)
-		m.lck.Broadcast()
-	}
-	m.lck.L.Unlock()
-}
-func (m *MDb) TPing() bool {
-	m.lck.L.Lock()
-	defer m.lck.L.Unlock()
-	now := util.Now()
-	if m.Active && now-m.last < m.Delay {
-		return true
-	}
-	if m.ping < 1 {
-		m.ping = 1
-		go m.tping_()
-	}
-	if m.Active {
-		m.lck.Wait()
-	}
+
+func (m *MDb) IsActive() bool {
+	m.lck.RLock()
+	defer m.lck.RUnlock()
 	return m.Active
 }
 
@@ -131,18 +101,25 @@ type MDbs struct {
 	Dbs     []*MDb
 	onum    uint32
 	Timeout int64
+	Delay   int64
+	Running bool
 }
 
 func NewMDbs2() *MDbs {
-	return &MDbs{
+	var mdbs = &MDbs{
 		Timeout: 30000,
+		Delay:   8000,
 	}
+	mdbs.StartLoop()
+	return mdbs
 }
 
 func NewMDbs(h DbH) (*MDbs, error) {
 	mdbs := &MDbs{
 		Timeout: 30000,
+		Delay:   8000,
 	}
+	mdbs.StartLoop()
 	mdb, err := NewMDb(h)
 	if err == nil {
 		mdbs.Add(mdb)
@@ -169,7 +146,7 @@ func (m *MDbs) SelMDb() *MDb {
 	for {
 		for i := 0; i < all; i++ {
 			mdb := m.Dbs[(bidx+i)%all]
-			if mdb.TPing() {
+			if mdb.IsActive() {
 				atomic.AddUint64(&mdb.Hited, 1)
 				return mdb
 			}
@@ -181,4 +158,22 @@ func (m *MDbs) SelMDb() *MDb {
 		}
 	}
 	panic(fmt.Sprintf("MDbs wait database active timeout(%vms)", m.Timeout))
+}
+
+func (m *MDbs) LoopPing() {
+	log.D("MDbs loop ping is started...")
+	m.Running = true
+	for m.Running {
+		for _, mdb := range m.Dbs {
+			if mdb.ping < 1 {
+				go mdb.TPing()
+			}
+		}
+		time.Sleep(time.Duration(m.Delay) * time.Millisecond)
+	}
+	log.D("MDbs loop ping is stopped...")
+}
+
+func (m *MDbs) StartLoop() {
+	go m.LoopPing()
 }

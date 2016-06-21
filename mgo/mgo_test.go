@@ -2,6 +2,7 @@ package mgo
 
 import (
 	"fmt"
+	"github.com/Centny/dbm"
 	"github.com/Centny/gwf/tutil"
 	"github.com/Centny/gwf/util"
 	"gopkg.in/mgo.v2/bson"
@@ -12,6 +13,8 @@ import (
 )
 
 func TestDefault(t *testing.T) {
+	dbm.ShowLog = true
+	time.Sleep(time.Second)
 	runtime.GOMAXPROCS(util.CPU())
 	err := AddDefault("cny:123@loc.w:27017/cny", "cny")
 	if err != nil {
