@@ -5,12 +5,24 @@ import (
 	"github.com/Centny/dbm"
 	"github.com/Centny/gwf/tutil"
 	"github.com/Centny/gwf/util"
+	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 	"runtime"
 	"sync"
 	"testing"
 	"time"
 )
+
+var Indexes = map[string]map[string]mgo.Index{
+	"abc": map[string]mgo.Index{
+		"abc_a": mgo.Index{
+			Key: []string{"a"},
+		},
+		"abc_b": mgo.Index{
+			Key: []string{"b"},
+		},
+	},
+}
 
 func TestDefault(t *testing.T) {
 	dbm.ShowLog = true
@@ -28,6 +40,11 @@ func TestDefault(t *testing.T) {
 	}
 	if Db() == nil {
 		t.Error("error")
+		return
+	}
+	err = ChkIdx(C, Indexes)
+	if err != nil {
+		t.Error(err.Error())
 		return
 	}
 	// time.Sleep(5 * time.Second)
