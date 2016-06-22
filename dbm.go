@@ -11,6 +11,7 @@ import (
 )
 
 var ShowLog bool = false
+var ShowLogTime int64 = 8000
 
 func slog(format string, args ...interface{}) {
 	if ShowLog {
@@ -32,9 +33,10 @@ type MDb struct {
 	Active bool
 	Hited  uint64
 
-	lck  *sync.RWMutex
-	ping int32
-	last int64
+	lck      *sync.RWMutex
+	ping     int32
+	last     int64
+	log_time int64
 }
 
 func NewMDb(h DbH) (*MDb, error) {
@@ -55,11 +57,17 @@ func (m *MDb) Db() interface{} {
 }
 
 func (m *MDb) TPing() {
-	slog("MDb start ping to %v ", m.String())
+	var showlog = ShowLog && (util.Now()-m.log_time > ShowLogTime)
+	if showlog {
+		m.log_time = util.Now()
+		log.D("MDb start ping to %v ", m.String())
+	}
 	err := m.H.Ping(m.DB)
 	if err == nil || err.Error() != "Closed explicitly" {
 		if err == nil {
-			slog("MDb ping to %v success", m.String())
+			if showlog {
+				log.D("MDb ping to %v success", m.String())
+			}
 		} else {
 			log.E("MDb ping to %v error->%v, will mark to not active", m.String(), err)
 		}
@@ -108,7 +116,7 @@ type MDbs struct {
 func NewMDbs2() *MDbs {
 	var mdbs = &MDbs{
 		Timeout: 30000,
-		Delay:   8000,
+		Delay:   3000,
 	}
 	mdbs.StartLoop()
 	return mdbs
@@ -117,7 +125,7 @@ func NewMDbs2() *MDbs {
 func NewMDbs(h DbH) (*MDbs, error) {
 	mdbs := &MDbs{
 		Timeout: 30000,
-		Delay:   8000,
+		Delay:   3000,
 	}
 	mdbs.StartLoop()
 	mdb, err := NewMDb(h)
