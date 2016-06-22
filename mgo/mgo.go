@@ -77,6 +77,7 @@ func (m *MGO_H) Ping(db interface{}) error {
 	mdb := db.(*tmgo.Database)
 	err := mdb.Session.Ping()
 	if err != nil && (err.Error() == "Closed explicitly" || err.Error() == "EOF") {
+		mdb.Session.Close()
 		return dbm.Closed
 	} else {
 		return err
