@@ -65,6 +65,7 @@ func AddDbL(key, url, name string) error {
 type MGO_H struct {
 	Name string
 	Url  string
+	errc int
 }
 
 func NewMGO_H(url, name string) *MGO_H {
@@ -76,7 +77,12 @@ func NewMGO_H(url, name string) *MGO_H {
 func (m *MGO_H) Ping(db interface{}) error {
 	mdb := db.(*tmgo.Database)
 	err := mdb.Session.Ping()
-	if err != nil && (err.Error() == "Closed explicitly" || err.Error() == "EOF") {
+	if err == nil {
+		m.errc = 0
+		return nil
+	}
+	m.errc += 1
+	if m.errc >= 3 || err.Error() == "Closed explicitly" || err.Error() == "EOF" {
 		mdb.Session.Close()
 		return dbm.Closed
 	} else {
@@ -92,10 +98,12 @@ func (m *MGO_H) Create() (interface{}, error) {
 	if err == nil {
 		log.D("MGO_H dail to %v success", m)
 		return ss.DB(m.Name), nil
-	} else {
-		log.D("MGO_H dail to %v error->%v", m, err)
-		return nil, err
 	}
+	log.D("MGO_H dail to %v error->%v", m, err)
+	if ss != nil {
+		ss.Close()
+	}
+	return nil, err
 }
 func (m *MGO_H) String() string {
 	return fmt.Sprintf("MGO(Name:%v,Url:%v)", m.Name, m.Url)
