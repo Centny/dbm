@@ -7,6 +7,8 @@ import (
 	"github.com/Centny/gwf/util"
 	tmgo "gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
+	"strings"
+	"time"
 )
 
 var Default = dbm.NewMDbs2()
@@ -52,6 +54,33 @@ func AddDefault(url, name string) error {
 		Default.Add(mdb)
 	}
 	return err
+}
+
+func AddDefault2(urls string) {
+	for _, url := range strings.Split(urls, ",") {
+		url_n := strings.SplitAfterN(url, "/", 2)
+		if len(url_n) != 2 {
+			panic(fmt.Sprintf("invalid db uri(%v)", url))
+		}
+		var tempDelay time.Duration
+		for {
+			mdb, err := dbm.NewMDb(NewMGO_H(url, url_n[1]))
+			if err == nil {
+				Default.Add(mdb)
+				break
+			}
+			if tempDelay == 0 {
+				tempDelay = 100 * time.Millisecond
+			} else {
+				tempDelay *= 2
+			}
+			if max := 8 * time.Second; tempDelay > max {
+				tempDelay = max
+			}
+			log.E("AddDefault2 connection to server(%v) fail with error(%v), retrying after %v", url, err, tempDelay)
+			time.Sleep(tempDelay)
+		}
+	}
 }
 
 func AddDbL(key, url, name string) error {
