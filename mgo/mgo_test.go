@@ -39,12 +39,12 @@ func TestDefault(t *testing.T) {
 	dbm.ShowLog = true
 	time.Sleep(time.Second)
 	runtime.GOMAXPROCS(util.CPU())
-	err := AddDefault("cny:123@loc.w:27017/cny", "cny")
+	err := AddDefault("cny:123@loc.m:27017/cny", "cny")
 	if err != nil {
 		t.Error(err.Error())
 		return
 	}
-	err = AddDefault("cny:123@loc.w:27017/cny", "cny")
+	err = AddDefault("cny:123@loc.m:27017/cny", "cny")
 	if err != nil {
 		t.Error(err.Error())
 		return
@@ -87,12 +87,12 @@ func TestDefault(t *testing.T) {
 
 func TestDbL(t *testing.T) {
 	runtime.GOMAXPROCS(util.CPU())
-	err := AddDbL("a1", "cny:123@loc.w:27017/cny", "cny")
+	err := AddDbL("a1", "cny:123@loc.m:27017/cny", "cny")
 	if err != nil {
 		t.Error(err.Error())
 		return
 	}
-	err = AddDbL("a2", "cny:123@loc.w:27017/cny", "cny")
+	err = AddDbL("a2", "cny:123@loc.m:27017/cny", "cny")
 	if err != nil {
 		t.Error(err.Error())
 		return
@@ -129,7 +129,7 @@ func TestDbL(t *testing.T) {
 
 func TestPerformance(t *testing.T) {
 	runtime.GOMAXPROCS(util.CPU())
-	err := AddDefault("cny:123@loc.w:27017/cny", "cny")
+	err := AddDefault("cny:123@loc.m:27017/cny", "cny")
 	if err != nil {
 		t.Error(err.Error())
 		return
