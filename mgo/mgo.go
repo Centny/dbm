@@ -103,9 +103,16 @@ func NewMGO_H(url, name string) *MGO_H {
 		Url:  url,
 	}
 }
-func (m *MGO_H) Ping(db interface{}) error {
+func (m *MGO_H) Ping(db interface{}) (err error) {
 	mdb := db.(*tmgo.Database)
-	err := mdb.Session.Ping()
+	defer func() {
+		terr := recover()
+		if terr != nil {
+			mdb.Session.Close()
+			err = dbm.Closed
+		}
+	}()
+	err = mdb.Session.Ping()
 	if err == nil {
 		m.errc = 0
 		return nil
