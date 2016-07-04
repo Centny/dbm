@@ -118,7 +118,7 @@ func NewMDbs2() *MDbs {
 		Timeout: 30000,
 		Delay:   3000,
 	}
-	mdbs.StartLoop()
+	// mdbs.StartLoop()
 	return mdbs
 }
 
@@ -127,7 +127,7 @@ func NewMDbs(h DbH) (*MDbs, error) {
 		Timeout: 30000,
 		Delay:   3000,
 	}
-	mdbs.StartLoop()
+	// mdbs.StartLoop()
 	mdb, err := NewMDb(h)
 	if err == nil {
 		mdbs.Add(mdb)
@@ -137,6 +137,7 @@ func NewMDbs(h DbH) (*MDbs, error) {
 
 func (m *MDbs) Add(mdb ...*MDb) {
 	m.Dbs = append(m.Dbs, mdb...)
+	m.StartLoop()
 }
 
 func (m *MDbs) Db() interface{} {
@@ -170,7 +171,6 @@ func (m *MDbs) SelMDb() *MDb {
 
 func (m *MDbs) LoopPing() {
 	log.D("MDbs loop ping is started...")
-	m.Running = true
 	for m.Running {
 		for _, mdb := range m.Dbs {
 			if mdb.ping < 1 {
@@ -183,5 +183,9 @@ func (m *MDbs) LoopPing() {
 }
 
 func (m *MDbs) StartLoop() {
+	if m.Running {
+		return
+	}
+	m.Running = true
 	go m.LoopPing()
 }
