@@ -57,28 +57,40 @@ func AddDefault(url, name string) error {
 }
 
 func AddDefault2(urls string) {
-	for _, url := range strings.Split(urls, ",") {
+	for _, murl := range strings.Split(urls, ",") {
+		url_m := strings.SplitAfterN(murl, "*", 2)
+		var count = 1
+		if len(url_m) > 1 {
+			tc, err := util.ParseInt(url_m[1])
+			if err != nil {
+				panic(fmt.Sprintf("parsing uri(%v) fail with error %v", murl, err))
+			}
+			count = tc
+		}
+		var url = strings.TrimSuffix(url_m[0], "*")
 		url_n := strings.SplitAfterN(url, "/", 2)
 		if len(url_n) != 2 {
 			panic(fmt.Sprintf("invalid db uri(%v)", url))
 		}
-		var tempDelay time.Duration
-		for {
-			mdb, err := dbm.NewMDb(NewMGO_H(url, url_n[1]))
-			if err == nil {
-				Default.Add(mdb)
-				break
+		for i := 0; i < count; i++ { //connection multi time
+			var tempDelay time.Duration
+			for {
+				mdb, err := dbm.NewMDb(NewMGO_H(url, url_n[1]))
+				if err == nil {
+					Default.Add(mdb)
+					break
+				}
+				if tempDelay == 0 {
+					tempDelay = 100 * time.Millisecond
+				} else {
+					tempDelay *= 2
+				}
+				if max := 8 * time.Second; tempDelay > max {
+					tempDelay = max
+				}
+				log.E("AddDefault2 connection to server(%v) fail with error(%v), retrying after %v", url, err, tempDelay)
+				time.Sleep(tempDelay)
 			}
-			if tempDelay == 0 {
-				tempDelay = 100 * time.Millisecond
-			} else {
-				tempDelay *= 2
-			}
-			if max := 8 * time.Second; tempDelay > max {
-				tempDelay = max
-			}
-			log.E("AddDefault2 connection to server(%v) fail with error(%v), retrying after %v", url, err, tempDelay)
-			time.Sleep(tempDelay)
 		}
 	}
 }

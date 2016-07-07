@@ -85,6 +85,19 @@ func TestDefault(t *testing.T) {
 	time.Sleep(2 * time.Second)
 }
 
+func TestDefault2(t *testing.T) {
+	AddDefault2("cny:123@loc.m:27017/cny*5")
+	if len(Default.Dbs) != 5 {
+		t.Error("error")
+		return
+	}
+	AddDefault2("cny:123@loc.m:27017/cny*5,cny:123@loc.m:27017/cny,cny:123@loc.m:27017/cny*3")
+	if len(Default.Dbs) != 14 {
+		t.Error("error")
+		return
+	}
+}
+
 func TestDbL(t *testing.T) {
 	runtime.GOMAXPROCS(util.CPU())
 	err := AddDbL("a1", "cny:123@loc.m:27017/cny", "cny")
