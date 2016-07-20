@@ -22,6 +22,7 @@ func slog(format string, args ...interface{}) {
 type DbH interface {
 	Ping(db interface{}) error
 	Create() (interface{}, error)
+	// Close(db interface{})
 	String() string
 }
 
@@ -77,6 +78,7 @@ func (m *MDb) TPing() {
 		m.lck.Unlock()
 		return
 	}
+	// m.H.Close(m.DB)
 	//do reconnect
 	log.E("MDb ping to %v error->%v, will try reconnect", m.String(), err)
 	for {
@@ -88,6 +90,7 @@ func (m *MDb) TPing() {
 			m.ping = 0
 			m.Active = true
 			m.lck.Unlock()
+			break
 		} else {
 			log.E("MDb connect to %v error->%v, will retry after 5s", m.String(), err)
 			time.Sleep(5 * time.Second)
@@ -174,6 +177,7 @@ func (m *MDbs) LoopPing() {
 	for m.Running {
 		for _, mdb := range m.Dbs {
 			if mdb.ping < 1 {
+				mdb.ping = 1
 				go mdb.TPing()
 			}
 		}
