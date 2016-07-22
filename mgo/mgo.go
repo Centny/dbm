@@ -57,7 +57,7 @@ func AddDefault(url, name string) error {
 }
 
 func AddDefault2(urls string) {
-	for _, murl := range strings.Split(urls, ",") {
+	for _, murl := range strings.Split(urls, ";") {
 		url_m := strings.SplitAfterN(murl, "*", 2)
 		var count = 1
 		if len(url_m) > 1 {
