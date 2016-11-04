@@ -2,18 +2,24 @@ package mgo
 
 import (
 	"fmt"
+	"strings"
+	"sync"
+	"time"
+
 	"github.com/Centny/dbm"
 	"github.com/Centny/gwf/log"
 	"github.com/Centny/gwf/util"
 	tmgo "gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
-	"strings"
-	"time"
 )
 
 var Default = dbm.NewMDbs2()
 var DbL = map[string]*dbm.MDbs{}
 var Sequence = "sequence"
+var Increase int64 = 1000
+var WaitTimeout time.Duration = 30000
+
+type CF func(name string) *tmgo.Collection
 
 func Db() *tmgo.Database {
 	return Default.Db().(*tmgo.Database)
@@ -26,6 +32,9 @@ func Next(name, id string, increase int64) (oldv, newv int64, err error) {
 }
 func Next2(id string, increase int64) (oldv, newv int64, err error) {
 	return NextV(C(Sequence), id, increase)
+}
+func WaitNext(id string) int64 {
+	return PoolWaitNextV(C, Sequence, id, Increase, WaitTimeout)
 }
 
 func DbBy(key string) *tmgo.Database {
@@ -193,3 +202,66 @@ func NextV(c *tmgo.Collection, id string, increase int64) (oldv int64, newv int6
 	oldv = newv - increase
 	return
 }
+
+//
+var pool = map[string][]int64{}
+var pool_lck = sync.RWMutex{}
+
+func PoolNextV(cf CF, name, id string, increase int64) (val int64, err error) {
+	pool_lck.Lock()
+	defer pool_lck.Unlock()
+	if vals, ok := pool[id]; ok && len(vals) > 0 {
+		pool[id] = vals[1:]
+		return vals[0], nil
+	}
+	oldv, _, err := NextV(cf(name), id, increase)
+	if err != nil {
+		return 0, err
+	}
+	vals := []int64{}
+	for i := int64(1); i < increase; i++ {
+		vals = append(vals, oldv+int64(i)+1)
+	}
+	pool[id] = vals
+	return oldv + 1, nil
+}
+
+func PoolWaitNextV(cf CF, name, id string, increase int64, timeout time.Duration) int64 {
+	var tempDelay time.Duration // how long to sleep on accept failure
+	for {
+		next, err := PoolNextV(cf, name, id, increase)
+		if err != nil {
+			if tempDelay == 0 {
+				tempDelay = 5 * time.Millisecond
+			} else {
+				tempDelay *= 2
+			}
+			if tempDelay > timeout {
+				break
+			}
+			log.W("MDbs next sequence error: %v; retrying in %v", err, tempDelay)
+			time.Sleep(tempDelay)
+			continue
+		}
+		tempDelay = 0
+		return next
+	}
+	panic("MDbs next sequence time out")
+}
+
+func PoolWaitNext(cf CF, id string) int64 {
+	return PoolWaitNextV(cf, Sequence, id, Increase, WaitTimeout)
+}
+
+// func (m *MDbs) LoadSequence(name, id string, expect int64) (oldv int64, err error) {
+// 	oldv, _, err = NextV(m.C(name), id, expect)
+// 	return
+// }
+
+// func (m *MDbs) NextSequence(name, id string, increase int64) (int64, error) {
+
+// }
+
+// func (m *MDbs) NextString(name, pre, id string, increase int64) string {
+// 	return fmt.Sprintf("%v%v", pre, m.NextInt(name, id, increase))
+// }

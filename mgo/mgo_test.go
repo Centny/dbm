@@ -2,15 +2,16 @@ package mgo
 
 import (
 	"fmt"
+	"runtime"
+	"sync"
+	"testing"
+	"time"
+
 	"github.com/Centny/dbm"
 	"github.com/Centny/gwf/tutil"
 	"github.com/Centny/gwf/util"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
-	"runtime"
-	"sync"
-	"testing"
-	"time"
 )
 
 var Indexes = map[string]map[string]mgo.Index{
@@ -39,6 +40,7 @@ func TestDefault(t *testing.T) {
 	dbm.ShowLog = true
 	time.Sleep(time.Second)
 	runtime.GOMAXPROCS(util.CPU())
+	Default = dbm.NewMDbs2()
 	err := AddDefault("cny:123@loc.m:27017/cny", "cny")
 	if err != nil {
 		t.Error(err.Error())
@@ -86,12 +88,13 @@ func TestDefault(t *testing.T) {
 }
 
 func TestDefault2(t *testing.T) {
+	Default = dbm.NewMDbs2()
 	AddDefault2("cny:123@loc.m:27017/cny*5")
 	if len(Default.Dbs) != 5 {
 		t.Error("error")
 		return
 	}
-	AddDefault2("cny:123@loc.m:27017/cny*5,cny:123@loc.m:27017/cny,cny:123@loc.m:27017/cny*3")
+	AddDefault2("cny:123@loc.m:27017/cny*5;cny:123@loc.m:27017/cny;cny:123@loc.m:27017/cny*3")
 	if len(Default.Dbs) != 14 {
 		t.Error("error")
 		return
@@ -100,6 +103,7 @@ func TestDefault2(t *testing.T) {
 
 func TestDbL(t *testing.T) {
 	runtime.GOMAXPROCS(util.CPU())
+	Default = dbm.NewMDbs2()
 	err := AddDbL("a1", "cny:123@loc.m:27017/cny", "cny")
 	if err != nil {
 		t.Error(err.Error())
@@ -142,6 +146,7 @@ func TestDbL(t *testing.T) {
 
 func TestPerformance(t *testing.T) {
 	runtime.GOMAXPROCS(util.CPU())
+	Default = dbm.NewMDbs2()
 	err := AddDefault("cny:123@loc.m:27017/cny", "cny")
 	if err != nil {
 		t.Error(err.Error())
@@ -180,7 +185,36 @@ func TestPerformance(t *testing.T) {
 		added[nv2] = true
 		lck.Unlock()
 	})
-	fmt.Println(used, err)
+	fmt.Println("used->", used, err)
+	fmt.Println(Next2("abc", 0))
+	//
+	// added = map[int64]bool{}
+	used, err = tutil.DoPerf(20000, "", func(i int) {
+		nv := WaitNext("abc")
+		if err != nil {
+			t.Error(err.Error())
+			return
+		}
+		nv2 := WaitNext("abc")
+		if err != nil {
+			t.Error(err.Error())
+			return
+		}
+		lck.Lock()
+		if added[nv] {
+			fmt.Println(nv)
+			fmt.Println(pool)
+			panic("exists")
+		}
+		if added[nv2] {
+			fmt.Println(nv2)
+			panic("exists")
+		}
+		added[nv] = true
+		added[nv2] = true
+		lck.Unlock()
+	})
+	fmt.Println("used->", used, err)
 	fmt.Println(Next2("abc", 0))
 }
 
@@ -195,4 +229,8 @@ func TestErr(t *testing.T) {
 	}()
 	<-wait
 	NewMGO_H("xxx", "name").Create()
+}
+
+func TestSequenc(t *testing.T) {
+
 }
