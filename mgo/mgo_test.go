@@ -234,3 +234,112 @@ func TestErr(t *testing.T) {
 func TestSequenc(t *testing.T) {
 
 }
+
+func TestParseSortD(t *testing.T) {
+	val := ParseSortD(util.Map{
+		"a": 1,
+		"b": 2,
+	})
+	if val[0].Name != "a" {
+		t.Error("error")
+		return
+	}
+	val = ParseSortD(util.Map{
+		"a": -1,
+		"b": 2,
+	})
+	if val[0].Name != "a" {
+		t.Error("error")
+		return
+	}
+	val = ParseSortD(util.Map{
+		"a": 3,
+		"b": 2,
+	})
+	if val[0].Name != "b" {
+		t.Error("error")
+		return
+	}
+	val = ParseSortD(util.Map{
+		"a": 3,
+		"b": -2,
+	})
+	if val[0].Name != "b" {
+		t.Error("error")
+		return
+	}
+}
+
+func TestParseSortD2(t *testing.T) {
+	dbm.ShowLog = true
+	time.Sleep(time.Second)
+	runtime.GOMAXPROCS(util.CPU())
+	Default = dbm.NewMDbs2()
+	err := AddDefault("cny:123@loc.m:27017/cny", "cny")
+	if err != nil {
+		t.Error(err.Error())
+		return
+	}
+	for i := 0; i < 5; i++ {
+		Db().C("abcxx").Insert(bson.M{
+			"a": i,
+			"b": 4 - i,
+		})
+	}
+	var res = []util.Map{}
+	//
+	err = Db().C("abcxx").Pipe([]bson.M{
+		{
+			"$sort": ParseSortD(util.Map{
+				"a": 1,
+				"b": 2,
+			}),
+		},
+	}).All(&res)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	if res[0].IntVal("a") != 0 {
+		fmt.Println(util.S2Json(res[0]))
+		t.Error("error")
+		return
+	}
+	//
+	err = Db().C("abcxx").Pipe([]bson.M{
+		{
+			"$sort": ParseSortD(util.Map{
+				"a": -1,
+				"b": 2,
+			}),
+		},
+	}).All(&res)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	if res[0].IntVal("a") != 4 {
+		fmt.Println(util.S2Json(res[0]))
+		t.Error("error")
+		return
+	}
+	//
+	err = Db().C("abcxx").Pipe([]bson.M{
+		{
+			"$sort": ParseSortD(util.Map{
+				"a": 2,
+				"b": 1,
+			}),
+		},
+	}).All(&res)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	if res[0].IntVal("a") != 4 {
+		fmt.Println(util.S2Json(res[0]))
+		t.Error("error")
+		return
+	}
+
+}
