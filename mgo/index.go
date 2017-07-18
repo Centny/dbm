@@ -28,8 +28,10 @@ func doChkIdx(C func(string) *tmgo.Collection, timeout time.Duration, cname stri
 		return err
 	}
 	if timeout > 0 {
-		tc.Database.Session.SetSyncTimeout(timeout)
-		defer tc.Database.Session.SetSyncTimeout(7 * time.Second)
+		tc.Database.Session.SetSocketTimeout(timeout)
+		defer tc.Database.Session.SetSocketTimeout(7 * time.Second)
+		//tc.Database.Session.SetSyncTimeout(timeout)
+		//defer tc.Database.Session.SetSyncTimeout(7 * time.Second)
 	}
 	log.D("ChkIdx checking index on collection(%v)...", cname)
 	idx_l, err := tc.Indexes()
