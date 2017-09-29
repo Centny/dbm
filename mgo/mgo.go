@@ -81,7 +81,7 @@ func AddDefault2(urls string) {
 			count = tc
 		}
 		var url = strings.TrimSuffix(url_m[0], "*")
-		url_n := strings.SplitAfterN(url, "/", 2)
+		url_n := strings.SplitAfterN(strings.SplitN(url, "?", 2)[0], "/", 2)
 		if len(url_n) != 2 {
 			panic(fmt.Sprintf("invalid db uri(%v)", url))
 		}
